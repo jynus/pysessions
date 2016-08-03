@@ -4,7 +4,7 @@ import sys
 import MySQLdb
 
 app = Flask(__name__)
-NUM_TABLES=4
+NUM_TABLES=256
 DEFAULT_TTL=86400
 
 def get_db():
