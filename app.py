@@ -18,7 +18,7 @@ def get_db():
     return g.db
 
 def hash_key(key):
-    return str((crc32(key) & 0xffffffff) % NUM_TABLES)
+    return str((binascii.crc32(key.encode()) & 0xffffffff) % NUM_TABLES)
 
 @app.route('/api/v1.0/sessions/<string:key>', methods=['GET'])
 def get_session(key):
