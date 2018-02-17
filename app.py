@@ -1,7 +1,8 @@
 #!flask/bin/python
+import binascii
 from flask import Flask, request, g, jsonify
-import sys
 import MySQLdb
+import sys
 
 app = Flask(__name__)
 NUM_TABLES=256
@@ -15,10 +16,13 @@ def get_db():
         g.db = MySQLdb.connect(host='127.0.0.1', user='root', db='sessions');
         g.db.autocommit = True
     return g.db
-    
+
+def hash_key(key):
+    return str((crc32(key) & 0xffffffff) % NUM_TABLES)
+
 @app.route('/api/v1.0/sessions/<string:key>', methods=['GET'])
 def get_session(key):
-    query = ( 'SELECT k, v as v FROM sessions_' + str(hash(key) % NUM_TABLES) + 
+    query = ( 'SELECT k, v as v FROM sessions_' + hash_key(key) + 
     ' WHERE k = %s and UNIX_TIMESTAMP() < UNIX_TIMESTAMP(ts) + expiration ' +
     'ORDER BY ts DESC LIMIT 1' )
     cursor = get_db().cursor()
@@ -33,7 +37,7 @@ def get_session(key):
 def post_session():
     cursor = get_db().cursor()
     args = request.get_json()
-    query = 'INSERT INTO sessions_' + str(hash(args['key']) % NUM_TABLES) + \
+    query = 'INSERT INTO sessions_' + hash_key(args['key']) + \
     ' (k, v, expiration) VALUES (%(key)s, %(value)s, ' + str(DEFAULT_TTL) + ')'
     cursor.execute(query, args)
     get_db().commit()
@@ -44,7 +48,7 @@ def post_session():
 def put_session():
     cursor = get_db().cursor()
     args = request.get_json()
-    query = 'INSERT INTO sessions_' + str(hash(args['key']) % NUM_TABLES) + \
+    query = 'INSERT INTO sessions_' + hash_key(args['key']) + \
     ' (k, v, expiration) VALUES (%(key)s, %(value)s, ' + str(DEFAULT_TTL) + ')'
     cursor.execute(query, args)
     get_db().commit()
@@ -53,7 +57,7 @@ def put_session():
 
 @app.route('/api/v1.0/sessions/<string:key>', methods=['DELETE'])
 def delete_session(key):
-    query = 'DELETE FROM sessions_' + str(hash(key) % NUM_TABLES) + \
+    query = 'DELETE FROM sessions_' + hash_key(key) + \
     ' WHERE k = %s'
     cursor = get_db().cursor()
     cursor.execute(query, (key,))
